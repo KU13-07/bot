@@ -1,4 +1,7 @@
-# To-Do
+# 🤖 Discord Bot
+A discord bot
+
+# 📃 To-Do
 - Update data:
     - Only process bins
     - Remove based on recently-ended
