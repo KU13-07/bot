@@ -1,0 +1,7 @@
+py-cord
+python-dotenv
+openai
+amulet-nbt
+yt-dlp
+PyNaCl
+async-timeout
