@@ -87,8 +87,7 @@ class Auctions(discord.Cog):
         print(f"\nTime taken to get pages: {perf_counter() - start:.2f} seconds")
         start = perf_counter()
         
-        loop = self.bot.loop
-        tasks = [loop.run_in_executor(None, self.process_auctions, page) for page in pages]
+        tasks = [asyncio.to_thread(self.process_auctions, page) for page in pages]
         results = await asyncio.gather(*tasks)
         self.auctions = {k:v for page in results for k, v in page.items()}
 
