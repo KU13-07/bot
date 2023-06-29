@@ -19,18 +19,18 @@ class Auctions(discord.Cog):
         url = f"https://api.hypixel.net/skyblock/auctions?page={page_num}"
         async with session.get(url) as response:
             data = await response.json()
-            return data
+            return data        
     
-    async def decode(self, item_bytes):
-        decoded = base64.b64decode(item_bytes)
-        data = amulet_nbt.load(decoded)
+    def process_auctions(self, page):
+        def decode(item_bytes):
+            decoded = base64.b64decode(item_bytes)
+            data = amulet_nbt.load(decoded)
 
-        return data.tag["i"][0]
-    
-    async def process_auctions(self, auctions):
+            return data.tag["i"][0]
+        
         processed_auctions = {}
-        for auction in auctions:
-            nbt_data = await self.decode(auction["item_bytes"])
+        for auction in page["auctions"]:
+            nbt_data = decode(auction["item_bytes"])
             extras = nbt_data["tag"]["ExtraAttributes"]
 
             if extras["id"].py_data == "POTION":
@@ -72,21 +72,21 @@ class Auctions(discord.Cog):
                     data["data"][key] = value.py_data
 
             processed_auctions[auction["uuid"]] = data
-        self.auctions = processed_auctions
+        return processed_auctions
 
-    @tasks.loop(seconds=30)
+    @tasks.loop()#seconds=30)
     async def update(self):
         start = perf_counter()
-        
         async with aiohttp.ClientSession() as session:
             first_page = await self.get_page(session, 0)
             total_pages = first_page["totalPages"]
 
             tasks = [asyncio.ensure_future(self.get_page(session, page_num)) for page_num in range(1, total_pages)]
-            results = await asyncio.gather(*tasks)
-            auctions = [auction for page in results for auction in page["auctions"]] + first_page["auctions"]
+            pages = await asyncio.gather(*tasks) + [first_page]
         
-        await self.process_auctions(auctions)
+        tasks = [asyncio.to_thread(self.process_auctions, page) for page in pages]
+        results = await asyncio.gather(*tasks)
+        self.auctions = {k:v for page in results for k, v in page.items()}
 
         print(f"Total auctions: {len(self.auctions)}")
         print(f"Time taken: {perf_counter() - start:.2f} seconds")

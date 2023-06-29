@@ -7,18 +7,19 @@ from async_timeout import timeout
 # Auto delete error messages?
 
 YDL_OPTS = {
-    'format': 'bestaudio/best',
-    'quiet': True,
+    "format": "bestaudio/best",
+    "quiet": True,
     # 'no_warnings': True,
     # 'ignoreerrors': True,
-    'default_search': 'auto'
+    "default_search": "auto",
 }
 FFMPEG_OPTS = {
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin",
     "options": "-vn",
 }
 
-class SongQueue(asyncio.Queue): #bc voice client already in use
+
+class SongQueue(asyncio.Queue):  # bc voice client already in use
     def __init__(self, bot, voice_client):
         super().__init__()
         self.voice_client = voice_client
@@ -26,7 +27,7 @@ class SongQueue(asyncio.Queue): #bc voice client already in use
         self.current = None
         self.loop = False
         self.volume = 0.3
-        
+
         self.next = asyncio.Event()
         self.audio_player = bot.loop.create_task(self.player())
 
@@ -38,10 +39,13 @@ class SongQueue(asyncio.Queue): #bc voice client already in use
                     async with timeout(180):
                         self.current = await self.get()
                 except:
-                    print('hi')
+                    print("hi")
                     await self.voice_client.disconnect()
 
-            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(self.current["url"], **FFMPEG_OPTS), volume=self.volume)
+            source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(self.current["url"], **FFMPEG_OPTS),
+                volume=self.volume,
+            )
             self.voice_client.play(source, after=self.play_next)
 
             self.current["embed"].set_author(name="Now Playing")
@@ -50,10 +54,10 @@ class SongQueue(asyncio.Queue): #bc voice client already in use
             await self.next.wait()
 
     def play_next(self, error=None):
-        print('done', self.voice_client.is_playing())
+        print("done", self.voice_client.is_playing())
         if error:
             raise ApplicationCommandError(str(error))
-        
+
         self.next.set()
 
     async def clear(self):
@@ -66,26 +70,25 @@ class Music(discord.Cog):
         self.bot = bot
         self.queues = {}
 
-
     async def cog_before_invoke(self, ctx: ApplicationContext):
         if not hasattr(ctx.author.voice, "channel"):
             raise ApplicationCommandError("join vc dumbass")
-
 
     @discord.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if member.id != self.bot.user.id:
             return
-        
+
         # If disconnected
         if after.self_deaf == False:
-            await after.channel.guild.change_voice_state(channel=after.channel, self_deaf=True)
+            await after.channel.guild.change_voice_state(
+                channel=after.channel, self_deaf=True
+            )
         if not after.channel:
             print(self.queues)
             self.queues[member.guild.id].audio_player.cancel()
             del self.queues[member.guild.id]
             print(self.queues)
-
 
     async def connect(self, ctx: ApplicationContext):
         channel = ctx.author.voice.channel
@@ -93,7 +96,7 @@ class Music(discord.Cog):
 
         if voice_client:
             if voice_client.channel != channel:
-                #check if busy
+                # check if busy
                 if not (voice_client.is_playing() or voice_client.is_paused()):
                     await voice_client.move_to(channel)
                     return "okay i moved to ur vc"
@@ -104,27 +107,28 @@ class Music(discord.Cog):
         else:
             self.queues[ctx.guild_id] = SongQueue(self.bot, await channel.connect())
             return "okay i connected to ur vc"
+
     @discord.slash_command(name="connect")
     async def _connect(self, ctx: ApplicationContext):
         response = await self.connect(ctx)
-        await ctx.respond(response)        
+        await ctx.respond(response)
+
     @discord.slash_command(name="join")
     async def _join(self, ctx: ApplicationContext):
         await self._connect(ctx)
 
-
     @discord.slash_command(name="disconnect")
     async def _disconnect(self, ctx: ApplicationContext):
         # Does user have to be in same vc as bot to dc?
-        if ctx.voice_client: # if connected
+        if ctx.voice_client:  # if connected
             await ctx.voice_client.disconnect()
             await ctx.respond("\;(")
         else:
             await ctx.respond("Bot not in a vc silly head")
+
     @discord.slash_command(name="leave")
     async def _leave(self, ctx: ApplicationContext):
         await self._disconnect(ctx)
-
 
     @discord.slash_command(name="play")
     async def _play(self, ctx: ApplicationContext, song):
@@ -138,13 +142,18 @@ class Music(discord.Cog):
                 info = ydl.extract_info(song, download=False)
         except:
             raise ApplicationCommandError("Error")
-        
+
         async def process_info(info):
             data = {
-                "embed": (discord.Embed(title=info["title"], url=info["webpage_url"], description=f"By [{info['uploader']}]({info['uploader_url']})")
-                     .set_image(url=info["thumbnail"])),
+                "embed": (
+                    discord.Embed(
+                        title=info["title"],
+                        url=info["webpage_url"],
+                        description=f"By [{info['uploader']}]({info['uploader_url']})",
+                    ).set_image(url=info["thumbnail"])
+                ),
                 "url": info["url"],
-                "ctx": ctx
+                "ctx": ctx,
             }
 
             if ctx.voice_client.is_playing() or ctx.voice_client.is_paused():
@@ -152,7 +161,7 @@ class Music(discord.Cog):
                 await ctx.respond(embed=data["embed"])
 
             return data
-        
+
         if info["extractor"] == "youtube:tab":
             for entry in info["entries"]:
                 await self.queues[ctx.guild_id].put(await process_info(entry))
@@ -160,7 +169,6 @@ class Music(discord.Cog):
             if info["extractor"] == "youtube:search":
                 info = info["entries"][0]
             await self.queues[ctx.guild_id].put(await process_info(info))
-    
 
     @discord.slash_command(name="stop")
     async def _stop(self, ctx: ApplicationContext):
@@ -171,7 +179,6 @@ class Music(discord.Cog):
             await ctx.respond("okay stopped")
         else:
             raise ApplicationCommandError("not playing anything lil bro")
-
 
     @discord.slash_command(name="clear")
     async def _clear(self, ctx: ApplicationContext):
@@ -184,9 +191,8 @@ class Music(discord.Cog):
 
     @discord.slash_command(name="loop")
     async def _loop(self, ctx: ApplicationContext):
-            self.queues[ctx.guild_id].loop = not self.queues[ctx.guild_id].loop
-            await ctx.respond(f"set loop to `{self.queues[ctx.guild_id].loop}`")
-        
+        self.queues[ctx.guild_id].loop = not self.queues[ctx.guild_id].loop
+        await ctx.respond(f"set loop to `{self.queues[ctx.guild_id].loop}`")
 
     @discord.slash_command(name="skip")
     async def _skip(self, ctx: ApplicationContext):
@@ -196,14 +202,16 @@ class Music(discord.Cog):
         else:
             raise ApplicationCommandError("not playing anything lil bro")
 
-
     @discord.slash_command(name="volume")
-    async def _volume(self, ctx: ApplicationContext, value: discord.Option(int, min_value=0, max_value=200)):
-        self.queues[ctx.guild_id].volume = value/100
-        ctx.voice_client.source.volume = value/100
+    async def _volume(
+        self,
+        ctx: ApplicationContext,
+        value: discord.Option(int, min_value=0, max_value=200),
+    ):
+        self.queues[ctx.guild_id].volume = value / 100
+        ctx.voice_client.source.volume = value / 100
         await ctx.respond(f"okay set volume to `{value}%`")
-            
-    
+
     @_stop.before_invoke
     @_clear.before_invoke
     @_loop.before_invoke
@@ -217,6 +225,7 @@ class Music(discord.Cog):
                 raise ApplicationCommandError("you need to be in same vc")
         else:
             raise ApplicationCommandError("not even connected lil bro")
+
 
 def setup(bot: discord.Bot):
     bot.add_cog(Music(bot))
