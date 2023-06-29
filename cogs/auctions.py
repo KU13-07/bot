@@ -5,7 +5,6 @@ import base64
 import amulet_nbt
 import json
 from discord.ext import tasks
-
 from time import perf_counter
 
 class Auctions(discord.Cog):
@@ -19,7 +18,7 @@ class Auctions(discord.Cog):
         url = f"https://api.hypixel.net/skyblock/auctions?page={page_num}"
         async with session.get(url) as response:
             data = await response.json()
-            return data        
+            return data
     
     def process_auctions(self, page):
         def decode(item_bytes):
@@ -73,14 +72,14 @@ class Auctions(discord.Cog):
 
             processed_auctions[auction["uuid"]] = data
         return processed_auctions
-
+    
     @tasks.loop()#seconds=30)
     async def update(self):
         start = perf_counter()
         async with aiohttp.ClientSession() as session:
             first_page = await self.get_page(session, 0)
             total_pages = first_page["totalPages"]
-
+            
             tasks = [asyncio.ensure_future(self.get_page(session, page_num)) for page_num in range(1, total_pages)]
             pages = await asyncio.gather(*tasks) + [first_page]
 
