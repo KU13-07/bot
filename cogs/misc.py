@@ -12,19 +12,14 @@ with open("lyrics.json") as f:
 class Misc(discord.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.description = "Miscellaneous features"
+        self.emoji = "🍼"
 
     @discord.Cog.listener()
-    async def on_message(self, msg: discord.Message):
-        def check(m):
-            return m.author == self.bot.user
-        
+    async def on_message(self, msg: discord.Message):        
         if msg.author.bot or msg.author.id == 511998974069047296:
-                return
-
-        if msg.content == "purge" and msg.author.id == 263875673943179265:
-            await msg.delete()
-            await msg.channel.purge(limit=10000, check=check)
-
+            return
+        
         content = msg.content.lower()
         for item in prompts_list:
             if any(prompt in content for prompt in item["prompts"]):

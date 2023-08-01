@@ -68,6 +68,9 @@ class SongQueue(asyncio.Queue):  # bc voice client already in use
 class Music(discord.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.description = "Music player features"
+        self.emoji = "🎵"
+
         self.queues = {}
 
     async def cog_before_invoke(self, ctx: ApplicationContext):

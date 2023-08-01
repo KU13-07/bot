@@ -3,7 +3,7 @@ import amulet_nbt
 from aiohttp import ClientSession
 from base64 import b64decode
 from collections import defaultdict
-from multiprocessing import Pool, Process
+from multiprocessing import Process
 
 URL = "https://api.hypixel.net/skyblock/auctions?page={}"
 
@@ -61,13 +61,13 @@ async def gather(session):
     results = await asyncio.gather(*tasks) + [first_page]
     pages = [page["auctions"] for page in results]
 
-    with Pool() as pool:
-        results = pool.map(process_page, pages)
+    results = [process_page(page) for page in pages]
     return merge(results)
+    
 
 async def update_loop(dict):
     async with ClientSession() as session:
-        while True:            
+        while True:
             new_data = await gather(session)
             dict.clear()
             dict.update(new_data)
