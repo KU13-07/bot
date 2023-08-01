@@ -14,6 +14,8 @@ bot = discord.Bot(intents=intents)
 
 @bot.event
 async def on_ready():
+    await bot.change_presence(status=discord.Status.idle, activity=discord.Game("dating sim"))
+
     cogs = bot.cogs.keys()
 
     for guild in bot.guilds:
