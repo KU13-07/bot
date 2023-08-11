@@ -1,11 +1,10 @@
 import discord
-import os
-from discord import ApplicationContext
+from os import environ, listdir, remove
 from dotenv import load_dotenv
 import json
 
 load_dotenv()
-TOKEN = os.environ["TOKEN"]
+TOKEN = environ["TOKEN"]
 
 URL = "https://api.hypixel.net/skyblock/auctions?page={}"
 
@@ -53,11 +52,11 @@ async def on_guild_join(guild: discord.Guild):
 # idk if i should keep - seems unnecessary
 @bot.event
 async def on_guild_leave(guild: discord.Guild):
-    os.remove(f"settings/{guild.id}.json")
+    remove(f"settings/{guild.id}.json")
 
 @bot.event
-async def on_application_command_error(ctx: ApplicationContext, exception):
-	await ctx.respond(exception)
+async def on_application_command_error(ctx: discord.ApplicationContext, exception):
+    await ctx.respond(exception)
 
 @bot.slash_command(description="Modify bot settings")
 async def settings(ctx: discord.ApplicationContext):
@@ -77,7 +76,7 @@ async def settings(ctx: discord.ApplicationContext):
     await ctx.respond(embed=embed)
 
 if __name__ == "__main__":
-	extensions = [f'cogs.{file[:-3]}' for file in os.listdir('cogs') if file.endswith('.py')]
+	extensions = [f'cogs.{file[:-3]}' for file in listdir('cogs') if file.endswith('.py')]
 	bot.load_extensions(*extensions)
 
 	bot.run(TOKEN)
